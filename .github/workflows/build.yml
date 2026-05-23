@@ -1,0 +1,107 @@
+name: 打包 Windows / macOS
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 编译前端
+        run: |
+          npm install
+          npm run build
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: 安装 Python 依赖
+        run: pip install -r backend/requirements.txt
+
+      - name: PyInstaller 打包
+        run: |
+          pyinstaller --onedir --windowed --name="视频爬取工具" `
+            --add-data "backend;backend" `
+            --add-data "dist;dist" `
+            --hidden-import yt_dlp `
+            --hidden-import yt_dlp.extractor `
+            --hidden-import yt_dlp.downloader `
+            --hidden-import httpx `
+            --hidden-import bs4 `
+            --hidden-import lxml `
+            --hidden-import sse_starlette `
+            --hidden-import fastapi `
+            --hidden-import webview `
+            --exclude-module tkinter `
+            run.py
+
+      - name: 压缩为 zip
+        run: Compress-Archive -Path "dist/视频爬取工具/*" -DestinationPath "视频爬取工具-win64.zip"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: 视频爬取工具-Windows
+          path: 视频爬取工具-win64.zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 编译前端
+        run: |
+          npm install
+          npm run build
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: 安装 Python 依赖
+        run: pip install -r backend/requirements.txt
+
+      - name: PyInstaller 打包
+        run: |
+          pyinstaller --onedir --windowed --name="视频爬取工具" \
+            --add-data "backend:backend" \
+            --add-data "dist:dist" \
+            --hidden-import yt_dlp \
+            --hidden-import yt_dlp.extractor \
+            --hidden-import yt_dlp.downloader \
+            --hidden-import httpx \
+            --hidden-import bs4 \
+            --hidden-import lxml \
+            --hidden-import sse_starlette \
+            --hidden-import fastapi \
+            --hidden-import webview \
+            --exclude-module tkinter \
+            run.py
+
+      - name: 创建 DMG
+        run: |
+          mkdir -p dmg/视频爬取工具.app
+          cp -R "dist/视频爬取工具.app" dmg/
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: 视频爬取工具-macOS
+          path: dist/视频爬取工具.app
