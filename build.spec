@@ -21,7 +21,10 @@ a = Analysis(
     ],
     hiddenimports=[
         'uvicorn.loops.auto',
+        'uvicorn.loops.select',
         'uvicorn.protocols.http.auto',
+        'uvicorn.protocols.http.h11_impl',
+        'uvicorn.lifespan.on',
         'uvicorn.logging',
         'yt_dlp',
         'yt_dlp.extractor',
@@ -37,6 +40,7 @@ a = Analysis(
         'clr',       # pywebview Windows 依赖
         'win32gui',  # pywebview Windows 依赖
         'win32con',
+        'win32api',
     ],
     hookspath=[],
     hooksconfig={},
