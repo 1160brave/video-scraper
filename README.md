@@ -47,6 +47,54 @@ pip install -r backend/requirements.txt
 python run.py
 ```
 
+### 本地编译与打包 (PyInstaller)
+
+如果您希望在本地将本应用打包成无 Python 环境依赖的独立可执行文件，请按照以下步骤操作：
+
+#### 1. 前置准备（双平台通用）
+确保已经编译了前端静态文件，并且安装了 Python 的打包依赖：
+```bash
+# 编译前端网页
+npm install
+npm run build
+
+# 安装 Python 打包依赖（推荐使用 pip）
+pip install -r backend/requirements.txt
+pip install pyinstaller
+```
+
+#### 2. Windows 平台打包
+```bash
+# 执行打包命令（打包为单个 exe 应用程序）
+pyinstaller 视频爬取工具.spec --clean
+```
+* 打包完成后，可执行文件位于 `dist/视频爬取工具.exe`。
+
+#### 3. macOS 平台打包与启动指引
+```bash
+# 执行打包命令（打包为 .app 应用程序包）
+pyinstaller build.spec --clean
+```
+* 打包完成后，应用包位于 `dist/视频爬取工具.app`。
+
+> [!WARNING]
+> **⚠️ 重要（macOS 必看）：双击打不开 .app 的解决方法**
+> 由于 macOS 安全机制（Gatekeeper）的限制，本地打包且未签名的 `.app` 应用程序包可能会被系统静默拦截，表现为双击没有反应。请打开 Mac 终端，进入项目根目录运行以下命令解除限制：
+> 
+> ```bash
+> # 1. 消除系统隔离属性（解除系统阻拦，最关键的一步）
+> xattr -cr ./dist/视频爬取工具.app
+> 
+> # 2. 赋予内部二进制可执行权限
+> chmod +x ./dist/视频爬取工具.app/Contents/MacOS/视频爬取工具
+> ```
+> 
+> **💻 终极调试命令：**
+> 如果双击依旧无法启动，请在终端里直接通过路径唤起，所有的报错堆栈与 Python 日志将会实时显示在终端中，一目了然：
+> ```bash
+> ./dist/视频爬取工具.app/Contents/MacOS/视频爬取工具
+> ```
+
 ### 下载打包版（推荐）
 
 无需安装 Python，下载即用：
