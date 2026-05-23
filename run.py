@@ -6,6 +6,30 @@ import traceback
 import datetime
 
 # =====================================================================
+# 0. 解决 console=False 时 sys.stdout/sys.stderr 为 None 导致 uvicorn 等库报错的问题
+# =====================================================================
+class DummyWriter:
+    def write(self, *args, **kwargs):
+        pass
+    def flush(self):
+        pass
+    def isatty(self):
+        return False
+
+class DummyReader:
+    def read(self, *args, **kwargs):
+        return ""
+    def readline(self, *args, **kwargs):
+        return ""
+
+if sys.stdout is None:
+    sys.stdout = DummyWriter()
+if sys.stderr is None:
+    sys.stderr = DummyWriter()
+if sys.stdin is None:
+    sys.stdin = DummyReader()
+
+# =====================================================================
 # 1. 崩溃/异常日志记录与弹窗系统
 # =====================================================================
 def show_error_message(title, message):
