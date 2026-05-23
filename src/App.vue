@@ -28,6 +28,10 @@ const activeMenu = computed(() => route.path)
           <el-icon><Download /></el-icon>
           <span>下载管理</span>
         </el-menu-item>
+        <el-menu-item index="/settings">
+          <el-icon><Tools /></el-icon>
+          <span>下载设置</span>
+        </el-menu-item>
       </el-menu>
     </aside>
     <main class="main-content">
