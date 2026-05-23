@@ -78,7 +78,7 @@ if IS_MAC:
         strip=False,
         upx=True,
         console=False,
-        target_architecture='arm64',
+        target_architecture=None,
     )
     app = BUNDLE(
         exe,
