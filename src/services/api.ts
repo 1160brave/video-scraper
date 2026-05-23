@@ -90,6 +90,10 @@ export async function cancelTask(taskId: string): Promise<void> {
   await api.delete(`/api/tasks/${taskId}`)
 }
 
+export async function openFolder(taskId: string): Promise<void> {
+  await api.post(`/api/tasks/${taskId}/open-folder`)
+}
+
 export function createSSEConnection(): EventSource {
   return new EventSource(`${BASE_URL}/api/tasks/stream`)
 }

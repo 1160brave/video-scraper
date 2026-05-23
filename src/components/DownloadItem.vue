@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import ProgressBar from './ProgressBar.vue'
 import type { TaskInfo } from '@/services/api'
+import { openFolder } from '@/services/api'
 
 const props = defineProps<{
   task: TaskInfo
@@ -11,7 +12,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   cancel: []
   retry: []
-}>()
+ }>()
 
 const statusType = computed(() => {
   switch (props.task.status) {
@@ -51,10 +52,12 @@ const sizeInfo = computed(() => {
   return d
 })
 
-function handleOpenFile() {
-  if (props.task.file_path) {
-    // 在 webview 环境下显示文件路径
-    ElMessage.success(`文件已保存至: ${props.task.file_path}`)
+async function handleOpenFile() {
+  try {
+    await openFolder(props.task.task_id)
+  } catch (error: any) {
+    const errorDetail = error.response?.data?.detail || error.message || '打开文件位置失败'
+    ElMessage.error(errorDetail)
   }
 }
 </script>

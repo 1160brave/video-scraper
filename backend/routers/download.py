@@ -49,6 +49,38 @@ async def cancel_task(task_id: str):
     raise HTTPException(status_code=404, detail="任务不存在或已完成")
 
 
+@router.post("/api/tasks/{task_id}/open-folder")
+async def open_task_folder(task_id: str):
+    """在文件资源管理器中定位并选中文件"""
+    import os
+    import subprocess
+    import platform
+    
+    task_info = manager.get(task_id)
+    if not task_info:
+        raise HTTPException(status_code=404, detail="任务不存在")
+        
+    file_path = task_info.file_path
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(status_code=400, detail="本地视频文件已不存在，可能已被移动或删除")
+        
+    try:
+        sys_type = platform.system()
+        if sys_type == "Windows":
+            # Windows explorer /select,路径 可以选中文件
+            subprocess.run(['explorer', '/select,', os.path.normpath(file_path)])
+        elif sys_type == "Darwin":
+            # macOS open -R 路径 可以选中文件
+            subprocess.run(['open', '-R', file_path])
+        else:
+            # Linux 打开父目录
+            parent_dir = os.path.dirname(file_path)
+            subprocess.run(['xdg-open', parent_dir])
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"打开文件位置失败: {str(e)}")
+
+
 @router.get("/api/settings")
 async def get_settings():
     """获取当前下载目录"""
