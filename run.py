@@ -235,6 +235,9 @@ def main():
             fullscreen=False,
         )
 
+        # 将窗口实例暴露给后端 API 接口，用于调起原生文件夹选择对话框
+        config.active_window = window
+
         webview.start(debug=False)
         print("应用已退出")
     except Exception as e:

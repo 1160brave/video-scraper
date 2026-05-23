@@ -94,4 +94,26 @@ export function createSSEConnection(): EventSource {
   return new EventSource(`${BASE_URL}/api/tasks/stream`)
 }
 
+// ---- 下载设置 API ----
+
+export interface SettingsInfo {
+  download_dir: string
+}
+
+export async function getSettings(): Promise<SettingsInfo> {
+  const { data } = await api.get<SettingsInfo>('/api/settings')
+  return data
+}
+
+export async function selectFolder(): Promise<SettingsInfo> {
+  const { data } = await api.post<SettingsInfo>('/api/settings/select-folder')
+  return data
+}
+
+export async function saveSettings(downloadDir: string): Promise<SettingsInfo> {
+  const { data } = await api.post<SettingsInfo>('/api/settings', { download_dir: downloadDir })
+  return data
+}
+
 export { BASE_URL }
+

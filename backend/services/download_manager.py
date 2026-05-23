@@ -10,7 +10,8 @@ import httpx
 import yt_dlp
 
 from schemas import DownloadItem, TaskInfo
-from config import DOWNLOAD_DIR, MAX_CONCURRENT_DOWNLOADS
+import config
+from config import MAX_CONCURRENT_DOWNLOADS
 
 HEADERS = {
     "User-Agent": (
@@ -124,7 +125,7 @@ class DownloadManager:
         if len(ext) > 5:
             ext = "mp4"
         safe_title = _safe_filename(task.title)
-        file_path = os.path.join(DOWNLOAD_DIR, f"{safe_title}.{ext}")
+        file_path = os.path.join(config.DOWNLOAD_DIR, f"{safe_title}.{ext}")
         # 避免重名
         file_path = _unique_path(file_path)
         task.file_path = file_path
@@ -151,7 +152,7 @@ class DownloadManager:
 
     async def _download_ytdlp(self, task: DownloadTask):
         safe_title = _safe_filename(task.title)
-        outtmpl = os.path.join(DOWNLOAD_DIR, f"{safe_title}.%(ext)s")
+        outtmpl = os.path.join(config.DOWNLOAD_DIR, f"{safe_title}.%(ext)s")
 
         def progress_hook(d: dict):
             if task._cancel_event.is_set():
@@ -183,7 +184,7 @@ class DownloadManager:
             "no_warnings": True,
             "progress_hooks": [progress_hook],
             "format": task.item.format_id,
-            "paths": {"home": DOWNLOAD_DIR},
+            "paths": {"home": config.DOWNLOAD_DIR},
         }
 
         loop = asyncio.get_event_loop()
@@ -201,9 +202,9 @@ class DownloadManager:
         # 查找下载的文件
         if not task.file_path or not os.path.exists(task.file_path):
             # 搜索可能的输出文件
-            for f in os.listdir(DOWNLOAD_DIR):
+            for f in os.listdir(config.DOWNLOAD_DIR):
                 if f.startswith(safe_title) and not f.endswith(".part") and not f.endswith(".ytdl"):
-                    task.file_path = os.path.join(DOWNLOAD_DIR, f)
+                    task.file_path = os.path.join(config.DOWNLOAD_DIR, f)
                     break
 
         task.status = "completed"
