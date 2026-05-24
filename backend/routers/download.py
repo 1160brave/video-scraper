@@ -83,9 +83,15 @@ async def open_task_folder(task_id: str):
 
 @router.get("/api/settings")
 async def get_settings():
-    """获取当前下载目录"""
+    """获取当前下载及 Cookie 配置"""
     import config
-    return {"download_dir": config.DOWNLOAD_DIR}
+    return {
+        "download_dir": config.DOWNLOAD_DIR,
+        "cookie_mode": config.COOKIE_MODE,
+        "cookie_browser": config.COOKIE_BROWSER,
+        "cookie_manual": config.COOKIE_MANUAL,
+        "cookie_file": config.COOKIE_FILE,
+    }
 
 
 @router.post("/api/settings/select-folder")
@@ -119,26 +125,90 @@ async def select_folder():
     return {"download_dir": config.DOWNLOAD_DIR}
 
 
+@router.post("/api/settings/select-cookie-file")
+async def select_cookie_file():
+    """调起原生选择 Cookies.txt 文件对话框"""
+    import os
+    import config
+    import webview
+    
+    if not config.active_window:
+        raise HTTPException(
+            status_code=400,
+            detail="当前未运行在桌面客户端模式下，无法触发文件选择器"
+        )
+        
+    try:
+        # pywebview create_file_dialog 返回选择的文件路径列表或 None
+        res = config.active_window.create_file_dialog(
+            webview.OPEN_DIALOG,
+            file_types=("Cookies Text File (*.txt)", "*.txt")
+        )
+        if res and len(res) > 0:
+            file_path = res[0]
+            file_path = os.path.abspath(file_path)
+            config.COOKIE_FILE = file_path
+            config.save_settings({"cookie_file": file_path})
+            return {"cookie_file": file_path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"调起文件选择器失败: {str(e)}")
+        
+    return {"cookie_file": config.COOKIE_FILE}
+
+
 @router.post("/api/settings")
 async def update_settings(payload: dict):
-    """手动保存下载目录（文本框输入）"""
+    """保存下载及 Cookie 配置"""
     import os
     import config
     
-    folder_path = payload.get("download_dir")
-    if not folder_path:
-        raise HTTPException(status_code=400, detail="文件夹路径不能为空")
-        
-    folder_path = os.path.expanduser(folder_path.strip())
-    folder_path = os.path.abspath(folder_path)
+    # 1. 尝试修改下载路径（如果包含）
+    if "download_dir" in payload:
+        folder_path = payload["download_dir"]
+        if folder_path:
+            folder_path = os.path.expanduser(folder_path.strip())
+            folder_path = os.path.abspath(folder_path)
+            try:
+                os.makedirs(folder_path, exist_ok=True)
+                config.DOWNLOAD_DIR = folder_path
+                config.save_settings({"download_dir": folder_path})
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"非法的文件夹路径或无创建权限: {str(e)}")
     
-    try:
-        os.makedirs(folder_path, exist_ok=True)
-        config.DOWNLOAD_DIR = folder_path
-        # 持久化保存
-        config.save_settings({"download_dir": folder_path})
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"非法的文件夹路径或无创建权限: {str(e)}")
+    # 2. 尝试修改 Cookie 设置
+    updates = {}
+    if "cookie_mode" in payload:
+        mode = payload["cookie_mode"]
+        if mode in ("none", "browser", "file", "manual"):
+            config.COOKIE_MODE = mode
+            updates["cookie_mode"] = mode
+            
+    if "cookie_browser" in payload:
+        browser = payload["cookie_browser"]
+        config.COOKIE_BROWSER = browser
+        updates["cookie_browser"] = browser
         
-    return {"download_dir": config.DOWNLOAD_DIR}
+    if "cookie_manual" in payload:
+        manual = payload["cookie_manual"]
+        config.COOKIE_MANUAL = manual
+        updates["cookie_manual"] = manual
+        
+    if "cookie_file" in payload:
+        file_path = payload["cookie_file"]
+        if file_path:
+            file_path = os.path.expanduser(file_path.strip())
+            file_path = os.path.abspath(file_path)
+        config.COOKIE_FILE = file_path
+        updates["cookie_file"] = file_path
+        
+    if updates:
+        config.save_settings(updates)
+        
+    return {
+        "download_dir": config.DOWNLOAD_DIR,
+        "cookie_mode": config.COOKIE_MODE,
+        "cookie_browser": config.COOKIE_BROWSER,
+        "cookie_manual": config.COOKIE_MANUAL,
+        "cookie_file": config.COOKIE_FILE,
+    }
 

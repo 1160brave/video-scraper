@@ -65,6 +65,7 @@ def extract_formats(info: dict) -> list[VideoFormat]:
 
 def scrape_with_ytdlp(url: str) -> tuple[list[VideoInfo], str | None]:
     """使用 yt-dlp 提取视频信息，返回 (videos, error)"""
+    import config
     opts = {
         "quiet": True,
         "no_warnings": True,
@@ -72,6 +73,9 @@ def scrape_with_ytdlp(url: str) -> tuple[list[VideoInfo], str | None]:
         "skip_download": True,
         "youtube_include_dash_manifest": False,
     }
+    
+    # 动态融入 Cookie 设定
+    opts.update(config.get_ytdlp_cookie_options())
 
     with yt_dlp.YoutubeDL(opts) as ydl:
         try:

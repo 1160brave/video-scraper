@@ -187,6 +187,9 @@ class DownloadManager:
             "paths": {"home": config.DOWNLOAD_DIR},
         }
 
+        # 动态融入 Cookie 设定
+        opts.update(config.get_ytdlp_cookie_options())
+
         loop = asyncio.get_event_loop()
         try:
             await loop.run_in_executor(None, lambda: self._run_ytdlp(opts, task))

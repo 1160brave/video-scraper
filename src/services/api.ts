@@ -102,6 +102,10 @@ export function createSSEConnection(): EventSource {
 
 export interface SettingsInfo {
   download_dir: string
+  cookie_mode: 'none' | 'browser' | 'file' | 'manual'
+  cookie_browser: string
+  cookie_manual: string
+  cookie_file: string
 }
 
 export async function getSettings(): Promise<SettingsInfo> {
@@ -114,8 +118,13 @@ export async function selectFolder(): Promise<SettingsInfo> {
   return data
 }
 
-export async function saveSettings(downloadDir: string): Promise<SettingsInfo> {
-  const { data } = await api.post<SettingsInfo>('/api/settings', { download_dir: downloadDir })
+export async function selectCookieFile(): Promise<{ cookie_file: string }> {
+  const { data } = await api.post<{ cookie_file: string }>('/api/settings/select-cookie-file')
+  return data
+}
+
+export async function saveSettings(payload: Partial<SettingsInfo>): Promise<SettingsInfo> {
+  const { data } = await api.post<SettingsInfo>('/api/settings', payload)
   return data
 }
 
