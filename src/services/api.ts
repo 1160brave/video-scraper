@@ -106,6 +106,8 @@ export interface SettingsInfo {
   cookie_browser: string
   cookie_manual: string
   cookie_file: string
+  max_concurrent: number
+  ffmpeg_installed: boolean
 }
 
 export async function getSettings(): Promise<SettingsInfo> {

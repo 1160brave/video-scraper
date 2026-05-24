@@ -73,6 +73,10 @@ class DownloadManager:
         self._running = False
         self._worker_task: asyncio.Task | None = None
 
+    def update_max_concurrent(self, limit: int):
+        """动态更新最大并发下载数"""
+        self._semaphore = asyncio.Semaphore(limit)
+
     async def add(self, item: DownloadItem) -> TaskInfo:
         task = DownloadTask(item)
         self._tasks[task.task_id] = task

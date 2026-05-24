@@ -4,6 +4,9 @@ import { getSettings, selectFolder, selectCookieFile, saveSettings } from '@/ser
 import { ElMessage } from 'element-plus'
 
 const downloadDir = ref('')
+const maxConcurrent = ref(3)
+const ffmpegInstalled = ref(false)
+
 const cookieMode = ref<'none' | 'browser' | 'file' | 'manual'>('none')
 const cookieBrowser = ref('chrome')
 const cookieManual = ref('')
@@ -17,6 +20,9 @@ const loadSettings = async () => {
   try {
     const settings = await getSettings()
     downloadDir.value = settings.download_dir
+    maxConcurrent.value = settings.max_concurrent || 3
+    ffmpegInstalled.value = settings.ffmpeg_installed || false
+    
     cookieMode.value = settings.cookie_mode || 'none'
     cookieBrowser.value = settings.cookie_browser || 'chrome'
     cookieManual.value = settings.cookie_manual || ''
@@ -70,6 +76,7 @@ const handleSaveSettings = async () => {
   try {
     await saveSettings({
       download_dir: downloadDir.value,
+      max_concurrent: maxConcurrent.value,
       cookie_mode: cookieMode.value,
       cookie_browser: cookieBrowser.value,
       cookie_manual: cookieManual.value,
@@ -104,25 +111,40 @@ onMounted(() => {
       <template #header>
         <div class="card-header">
           <el-icon class="icon blue"><FolderOpened /></el-icon>
-          <span class="title">下载保存设置</span>
+          <span class="title">下载管理设置</span>
         </div>
       </template>
       <div class="card-body">
-        <div class="input-row">
-          <el-input
-            v-model="downloadDir"
-            placeholder="请选择或手动输入视频保存路径"
-            class="dir-input"
-            clearable
-          />
-          <el-button type="primary" @click="handleSelectFolder">
-            <el-icon><Folder /></el-icon>
-            &nbsp;选择文件夹
-          </el-button>
+        <!-- 视频保存路径 -->
+        <div class="setting-item">
+          <span class="item-label">视频保存路径</span>
+          <div class="input-row">
+            <el-input
+              v-model="downloadDir"
+              placeholder="请选择或手动输入视频保存路径"
+              class="dir-input"
+              clearable
+            />
+            <el-button type="primary" @click="handleSelectFolder">
+              <el-icon><Folder /></el-icon>
+              &nbsp;选择文件夹
+            </el-button>
+          </div>
+          <p class="settings-tip">
+            提示：下载视频时将自动保存到此绝对路径。支持新建文件夹或输入网络/绝对路径。
+          </p>
         </div>
-        <p class="settings-tip">
-          提示：下载视频时将自动保存到此绝对路径。支持新建文件夹或输入网络/绝对路径。
-        </p>
+
+        <el-divider />
+
+        <!-- 最大并发数 -->
+        <div class="setting-item">
+          <span class="item-label">最大并发下载数</span>
+          <div class="concurrency-control">
+            <el-slider v-model="maxConcurrent" :min="1" :max="10" show-input style="width: 320px;" />
+            <span class="tip-text">（推荐设置为 1~5。并发量过高可能会导致视频站点临时对您的 IP 进行限流或拉黑）</span>
+          </div>
+        </div>
       </div>
     </el-card>
 
@@ -168,7 +190,7 @@ onMounted(() => {
               </el-select>
             </div>
             <p class="tip-text">
-              <strong>✨ 极力推荐此方式！</strong> 启动视频爬取和下载时，后端解析引擎将自动从您选择 the 本地浏览器中安全、实时读取对应的网站 Cookie 凭证，<strong>无需用户手动复制或下载任何插件</strong>。
+              <strong>✨ 极力推荐此方式！</strong> 启动视频爬取和下载时，后端解析引擎将自动从您选择的本地浏览器中安全、实时读取对应的网站 Cookie 凭证，<strong>无需用户手动复制或下载任何插件</strong>。
               <br/>
               <em>提示：请确保在进行解析/下载前，您已在所选浏览器中正常登录了对应的视频站点。Windows 无弹窗提示；macOS 可能会弹出钥匙串密码框以授权解密，请选择“始终允许”。</em>
             </p>
@@ -210,6 +232,61 @@ onMounted(() => {
               <br/>
               <em>获取方法：在您已登录视频网站的浏览器中安装如「Get cookies.txt LOCALLY」(Chrome/Edge 插件) 或类似插件，登录后点击插件一键“Export to txt”下载，然后在这里选择该文件即可。</em>
             </p>
+          </div>
+        </div>
+      </div>
+    </el-card>
+
+    <!-- 3. 系统环境与诊断 -->
+    <el-card class="settings-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <el-icon class="icon green"><Cpu /></el-icon>
+          <span class="title">系统诊断与依赖环境</span>
+        </div>
+      </template>
+      <div class="card-body system-diagnostics">
+        <div class="diagnostic-item">
+          <span class="diag-label">FFmpeg 运行时状态</span>
+          <div class="diag-status">
+            <el-tag v-if="ffmpegInstalled" type="success" effect="dark" class="status-tag">
+              <el-icon><CircleCheck /></el-icon>&nbsp;已检测到
+            </el-tag>
+            <el-tag v-else type="warning" effect="dark" class="status-tag">
+              <el-icon><Warning /></el-icon>&nbsp;未检测到
+            </el-tag>
+            
+            <span class="diag-desc">
+              <span v-if="ffmpegInstalled">
+                系统已安装并配置好 FFmpeg 环境。本工具已完美解锁 **音视频高清合成** 功能，支持无损合并并下载 1080P、2K、4K 及以上所有最高清晰度视频。
+              </span>
+              <span v-else class="warning-text">
+                未检测到 FFmpeg 运行时。下载 YouTube/Bilibili 等高清视频时，由于视频和音频流是分离开的，<strong>缺少 FFmpeg 将无法合并，导致最高只能下载 720P/480P 画质的合并版视频</strong>。
+              </span>
+            </span>
+          </div>
+        </div>
+        
+        <!-- FFmpeg 安装指引 -->
+        <div v-if="!ffmpegInstalled" class="ffmpeg-guide">
+          <p class="guide-title"><strong>💡 如何快速安装 FFmpeg？</strong></p>
+          <div class="guide-content">
+            <div class="platform-column">
+              <p class="guide-platform"><strong>🖥️ Windows 平台：</strong></p>
+              <ol>
+                <li>按下键盘 `Win + R` 键，输入 `cmd` 打开命令行。</li>
+                <li>运行命令：<code>winget install Gyan.FFmpeg</code> 即可全自动安装并配好环境变量。</li>
+                <li>或者访问 <a href="https://ffmpeg.org/download.html" target="_blank">FFmpeg 官网</a> 下载压缩包，解压后将 `bin` 路径手动加入到系统环境变量 `Path` 中。</li>
+              </ol>
+            </div>
+            <div class="platform-column">
+              <p class="guide-platform"><strong>🍏 macOS 平台：</strong></p>
+              <ol>
+                <li>打开终端 (Terminal)。</li>
+                <li>如果您已安装 Homebrew，直接运行：<code>brew install ffmpeg</code> 即可一键极速配置完毕。</li>
+                <li>安装完成后重启本视频爬取工具，此状态即可变为“已检测到”。</li>
+              </ol>
+            </div>
           </div>
         </div>
       </div>
@@ -257,6 +334,9 @@ h2 {
 .card-header .icon.orange {
   color: #e6a23c;
 }
+.card-header .icon.green {
+  color: #67c23a;
+}
 .card-header .title {
   font-weight: 600;
   font-size: 14px;
@@ -265,7 +345,23 @@ h2 {
 .card-body {
   display: flex;
   flex-direction: column;
+  gap: 16px;
+  padding: 8px 0;
+}
+.setting-item {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+}
+.item-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+}
+.concurrency-control {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 .input-row {
   display: flex;
@@ -308,6 +404,80 @@ h2 {
   color: #82848a !important;
   line-height: 1.6;
   margin: 8px 0 0 0 !important;
+}
+.system-diagnostics {
+  gap: 16px;
+}
+.diagnostic-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.diag-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+}
+.diag-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.status-tag {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.diag-desc {
+  font-size: 13px;
+  color: #5a5e66;
+  line-height: 1.6;
+}
+.warning-text {
+  color: #e6a23c;
+  font-weight: 500;
+}
+.ffmpeg-guide {
+  padding: 16px;
+  background-color: #fffaf0;
+  border: 1px solid #fdf6ec;
+  border-radius: 6px;
+}
+.guide-title {
+  font-size: 13px;
+  color: #e6a23c;
+  margin: 0 0 12px 0;
+}
+.guide-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.guide-platform {
+  font-size: 13px;
+  color: #303133;
+  margin: 0 0 8px 0;
+}
+.guide-content ol {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #606266;
+  line-height: 1.7;
+}
+.guide-content ol code {
+  background-color: #f4f4f5;
+  color: #303133;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+.guide-content a {
+  color: #409eff;
+  text-decoration: none;
+}
+.guide-content a:hover {
+  text-decoration: underline;
 }
 .bottom-action {
   display: flex;

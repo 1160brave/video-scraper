@@ -34,9 +34,15 @@ COOKIE_MODE = _saved_settings.get("cookie_mode", "none")  # none, browser, file,
 COOKIE_BROWSER = _saved_settings.get("cookie_browser", "chrome")  # chrome, edge, firefox, safari, etc.
 COOKIE_MANUAL = _saved_settings.get("cookie_manual", "")  # 手动输入 Cookie 文本
 COOKIE_FILE = _saved_settings.get("cookie_file", "")  # Netscape cookies 文件路径
+MAX_CONCURRENT_DOWNLOADS = int(_saved_settings.get("max_concurrent", 3))  # 最大并发下载数
 
 # 用于存储 pywebview 窗口实例以支持原生对话框
 active_window = None
+
+def check_ffmpeg() -> bool:
+    """检测系统是否安装了 FFmpeg"""
+    import shutil
+    return shutil.which("ffmpeg") is not None
 
 def get_ytdlp_cookie_options() -> dict:
     """根据当前配置动态生成 yt-dlp 的 Cookie 选项"""

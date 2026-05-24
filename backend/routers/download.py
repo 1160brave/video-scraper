@@ -91,6 +91,8 @@ async def get_settings():
         "cookie_browser": config.COOKIE_BROWSER,
         "cookie_manual": config.COOKIE_MANUAL,
         "cookie_file": config.COOKIE_FILE,
+        "max_concurrent": config.MAX_CONCURRENT_DOWNLOADS,
+        "ffmpeg_installed": config.check_ffmpeg(),
     }
 
 
@@ -175,7 +177,7 @@ async def update_settings(payload: dict):
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"非法的文件夹路径或无创建权限: {str(e)}")
     
-    # 2. 尝试修改 Cookie 设置
+    # 2. 尝试修改 Cookie 与并发数设置
     updates = {}
     if "cookie_mode" in payload:
         mode = payload["cookie_mode"]
@@ -200,6 +202,17 @@ async def update_settings(payload: dict):
             file_path = os.path.abspath(file_path)
         config.COOKIE_FILE = file_path
         updates["cookie_file"] = file_path
+
+    if "max_concurrent" in payload:
+        try:
+            val = int(payload["max_concurrent"])
+            if 1 <= val <= 10:
+                config.MAX_CONCURRENT_DOWNLOADS = val
+                updates["max_concurrent"] = val
+                # 动态刷新后台队列的并发控制
+                manager.update_max_concurrent(val)
+        except Exception:
+            pass
         
     if updates:
         config.save_settings(updates)
@@ -210,5 +223,7 @@ async def update_settings(payload: dict):
         "cookie_browser": config.COOKIE_BROWSER,
         "cookie_manual": config.COOKIE_MANUAL,
         "cookie_file": config.COOKIE_FILE,
+        "max_concurrent": config.MAX_CONCURRENT_DOWNLOADS,
+        "ffmpeg_installed": config.check_ffmpeg(),
     }
 
