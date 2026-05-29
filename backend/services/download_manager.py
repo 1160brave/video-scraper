@@ -124,7 +124,7 @@ class DownloadManager:
                 task.status = "cancelled"
             else:
                 task.status = "failed"
-                task.error = str(e)
+                task.error = _format_error(e)
 
     async def _download_direct(self, task: DownloadTask):
         url = task.item.url
@@ -298,6 +298,16 @@ def _unique_path(path: str) -> str:
     while os.path.exists(f"{base}_{counter}{ext}"):
         counter += 1
     return f"{base}_{counter}{ext}"
+
+
+def _format_error(error: Exception) -> str:
+    """将底层异常转成面向用户的短错误信息"""
+    if isinstance(error, httpx.HTTPStatusError):
+        return f"下载失败：服务器返回 HTTP {error.response.status_code}"
+    if isinstance(error, httpx.RequestError):
+        return f"下载失败：网络请求异常（{error.__class__.__name__}）"
+    message = str(error).strip()
+    return message or error.__class__.__name__
 
 
 # 全局单例

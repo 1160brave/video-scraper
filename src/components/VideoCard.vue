@@ -6,10 +6,12 @@ import type { VideoInfo } from '@/services/api'
 const props = defineProps<{
   video: VideoInfo
   selectedFormat?: string
+  selected: boolean
 }>()
 
 const emit = defineEmits<{
   selectFormat: [formatId: string]
+  toggleSelected: [selected: boolean]
   download: []
 }>()
 
@@ -24,14 +26,25 @@ const thumbUrl = computed(() => props.video.thumbnail || '')
 </script>
 
 <template>
-  <div class="video-card">
-    <div class="thumb">
-      <img v-if="thumbUrl" :src="thumbUrl" :alt="video.title" />
-      <el-icon v-else :size="48"><VideoCamera /></el-icon>
-      <span v-if="duration" class="duration">{{ duration }}</span>
+  <div class="video-card" :class="{ selected }">
+    <div class="select-zone">
+      <el-checkbox
+        class="select-check"
+        :model-value="selected"
+        @update:model-value="(value: string | number | boolean) => emit('toggleSelected', Boolean(value))"
+      />
+      <div class="thumb" @click="emit('toggleSelected', !selected)">
+        <img v-if="thumbUrl" :src="thumbUrl" :alt="video.title" />
+        <el-icon v-else :size="34"><VideoCamera /></el-icon>
+        <span v-if="duration" class="duration">{{ duration }}</span>
+      </div>
     </div>
     <div class="info">
       <div class="title" :title="video.title">{{ video.title }}</div>
+      <div class="meta">
+        <span>{{ video.formats.length }} 个格式</span>
+        <span v-if="video.duration">{{ duration }}</span>
+      </div>
       <FormatSelector
         :formats="video.formats"
         :model-value="selectedFormat"
@@ -40,6 +53,7 @@ const thumbUrl = computed(() => props.video.thumbnail || '')
     </div>
     <div class="actions">
       <el-button type="primary" size="small" :disabled="!selectedFormat" @click="emit('download')">
+        <el-icon><Download /></el-icon>
         下载
       </el-button>
     </div>
@@ -48,17 +62,42 @@ const thumbUrl = computed(() => props.video.thumbnail || '')
 
 <style scoped>
 .video-card {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(170px, 220px) minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
-  padding: 16px;
-  background: #fff;
-  border-radius: 8px;
+  padding: 14px;
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+
+.video-card:hover {
+  border-color: #c6e2ff;
+  box-shadow: 0 8px 24px rgba(31, 45, 61, 0.06);
+}
+
+.video-card.selected {
+  border-color: #93c5fd;
+  background: var(--surface);
+}
+
+.select-zone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.select-check {
+  flex-shrink: 0;
+}
+
 .thumb {
-  width: 160px;
-  height: 90px;
-  border-radius: 6px;
+  width: 150px;
+  height: 84px;
+  border-radius: 10px;
   overflow: hidden;
   background: #f0f2f5;
   display: flex;
@@ -66,6 +105,7 @@ const thumbUrl = computed(() => props.video.thumbnail || '')
   justify-content: center;
   flex-shrink: 0;
   position: relative;
+  cursor: pointer;
 }
 .thumb img {
   width: 100%;
@@ -87,14 +127,51 @@ const thumbUrl = computed(() => props.video.thumbnail || '')
   min-width: 0;
 }
 .title {
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 8px;
+  color: var(--text-main);
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.meta {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 .actions {
   flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+  .video-card {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .select-zone {
+    align-items: flex-start;
+  }
+
+  .select-check {
+    align-self: flex-start;
+  }
+
+  .thumb {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+  }
 }
 </style>

@@ -1,9 +1,17 @@
 """Pydantic 请求/响应数据模型"""
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ScrapeRequest(BaseModel):
     url: str
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str) -> str:
+        value = value.strip()
+        if not value.startswith(("http://", "https://")):
+            raise ValueError("请输入完整的 http(s) 视频链接")
+        return value
 
 
 class VideoFormat(BaseModel):
@@ -48,6 +56,13 @@ class DownloadItem(BaseModel):
 
 class DownloadRequest(BaseModel):
     downloads: list[DownloadItem]
+
+    @field_validator("downloads")
+    @classmethod
+    def validate_downloads(cls, value: list[DownloadItem]) -> list[DownloadItem]:
+        if not value:
+            raise ValueError("下载列表为空")
+        return value
 
 
 class TaskInfo(BaseModel):

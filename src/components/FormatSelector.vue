@@ -29,7 +29,9 @@ function formatSize(bytes: number | null): string {
 }
 
 function label(f: VideoFormat): string {
-  const parts = [f.format_note || f.resolution, f.ext, formatSize(f.filesize)].filter(Boolean)
+  const audio = f.has_audio ? '含音频' : '仅视频'
+  const direct = f.is_direct_url ? '直链' : ''
+  const parts = [f.format_note || f.resolution, f.ext, formatSize(f.filesize), audio, direct].filter(Boolean)
   return parts.join(' · ')
 }
 </script>
@@ -40,7 +42,6 @@ function label(f: VideoFormat): string {
       :model-value="modelValue"
       size="small"
       placeholder="选择格式"
-      style="width: 220px"
       @update:model-value="(v: string) => emit('update:modelValue', v)"
     >
       <el-option-group
@@ -58,3 +59,13 @@ function label(f: VideoFormat): string {
     </el-select>
   </div>
 </template>
+
+<style scoped>
+.format-selector {
+  width: min(280px, 100%);
+}
+
+.format-selector :deep(.el-select) {
+  width: 100%;
+}
+</style>

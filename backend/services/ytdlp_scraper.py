@@ -10,7 +10,8 @@ def extract_formats(info: dict) -> list[VideoFormat]:
     """将 yt-dlp 返回的格式列表转为我们的 VideoFormat 模型"""
     formats: list[VideoFormat] = []
 
-    # 只取视频格式（排除纯音频）
+    # 只取视频格式（排除纯音频）。对于常见的高清“纯视频流”，同时提供：
+    # 1. video+bestaudio 的含音频合并版；2. 原始仅视频版。
     for fmt in info.get("formats", []):
         vcodec = fmt.get("vcodec", "none")
         acodec = fmt.get("acodec", "none")
@@ -22,19 +23,44 @@ def extract_formats(info: dict) -> list[VideoFormat]:
         if not has_video and has_audio:
             continue
 
-        format_id = fmt.get("format_id", "")
+        original_format_id = fmt.get("format_id", "")
+        format_id = original_format_id
         resolution = fmt.get("resolution") or fmt.get("format_note")
         ext = fmt.get("ext", "")
+        format_note = fmt.get("format_note")
+
+        if has_video and not has_audio and original_format_id:
+            formats.append(_build_format(
+                format_id=f"{original_format_id}+bestaudio/best",
+                ext=ext,
+                resolution=resolution,
+                filesize_raw=fmt.get("filesize") or fmt.get("filesize_approx"),
+                format_note=f"{format_note or resolution or '视频'} + 音频",
+                vcodec=vcodec,
+                acodec="best",
+                has_audio=True,
+                has_video=has_video,
+            ))
+            formats.append(_build_format(
+                format_id=original_format_id,
+                ext=ext,
+                resolution=resolution,
+                filesize_raw=fmt.get("filesize") or fmt.get("filesize_approx"),
+                format_note=f"{format_note or resolution or '视频'} · 仅视频",
+                vcodec=vcodec,
+                acodec=acodec,
+                has_audio=False,
+                has_video=has_video,
+            ))
+            continue
 
         filesize_raw = fmt.get("filesize") or fmt.get("filesize_approx")
-        filesize = int(filesize_raw) if filesize_raw else None
-
-        formats.append(VideoFormat(
+        formats.append(_build_format(
             format_id=format_id,
             ext=ext,
             resolution=resolution,
-            filesize=filesize,
-            format_note=fmt.get("format_note"),
+            filesize_raw=filesize_raw,
+            format_note=format_note,
             vcodec=vcodec if vcodec != "none" else None,
             acodec=acodec if acodec != "none" else None,
             has_audio=has_audio,
@@ -45,7 +71,7 @@ def extract_formats(info: dict) -> list[VideoFormat]:
     seen = set()
     unique: list[VideoFormat] = []
     for f in formats:
-        key = (f.resolution, f.ext, f.filesize)
+        key = (f.format_id, f.resolution, f.ext, f.filesize, f.has_audio)
         if key not in seen:
             seen.add(key)
             unique.append(f)
@@ -61,6 +87,32 @@ def extract_formats(info: dict) -> list[VideoFormat]:
 
     unique.sort(key=sort_key, reverse=True)
     return unique
+
+
+def _build_format(
+    *,
+    format_id: str,
+    ext: str,
+    resolution: str | None,
+    filesize_raw,
+    format_note: str | None,
+    vcodec: str | None,
+    acodec: str | None,
+    has_audio: bool,
+    has_video: bool,
+) -> VideoFormat:
+    filesize = int(filesize_raw) if filesize_raw else None
+    return VideoFormat(
+        format_id=format_id,
+        ext=ext,
+        resolution=resolution,
+        filesize=filesize,
+        format_note=format_note,
+        vcodec=vcodec if vcodec and vcodec != "none" else None,
+        acodec=acodec if acodec and acodec != "none" else None,
+        has_audio=has_audio,
+        has_video=has_video,
+    )
 
 
 def scrape_with_ytdlp(url: str) -> tuple[list[VideoInfo], str | None]:

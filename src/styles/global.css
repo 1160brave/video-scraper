@@ -7,9 +7,29 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background: #f5f7fa;
-  color: #303133;
+  background: #f3f5f8;
+  color: #1d2430;
   overflow: hidden;
+}
+
+:root {
+  --app-bg: #f3f5f8;
+  --sidebar-bg: #101828;
+  --sidebar-active: #1d2939;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --surface-raised: #ffffff;
+  --border: #e4e7ec;
+  --border-strong: #d0d5dd;
+  --text-main: #101828;
+  --text-secondary: #344054;
+  --text-muted: #667085;
+  --brand: #2563eb;
+  --brand-soft: #eff6ff;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --shadow-soft: 0 1px 2px rgba(16, 24, 40, 0.05);
 }
 
 #app {
@@ -27,4 +47,26 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #909399;
+}
+
+.el-button {
+  font-weight: 500;
+  border-radius: 8px;
+}
+
+.el-card,
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  box-shadow: none;
+}
+
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  border-radius: 8px;
+}
+
+.el-card {
+  border-color: var(--border);
 }

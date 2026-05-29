@@ -74,7 +74,7 @@ const handleSaveSettings = async () => {
 
   saving.value = true
   try {
-    await saveSettings({
+    const settings = await saveSettings({
       download_dir: downloadDir.value,
       max_concurrent: maxConcurrent.value,
       cookie_mode: cookieMode.value,
@@ -82,6 +82,13 @@ const handleSaveSettings = async () => {
       cookie_manual: cookieManual.value,
       cookie_file: cookieFile.value,
     })
+    downloadDir.value = settings.download_dir
+    maxConcurrent.value = settings.max_concurrent || 3
+    ffmpegInstalled.value = settings.ffmpeg_installed || false
+    cookieMode.value = settings.cookie_mode || 'none'
+    cookieBrowser.value = settings.cookie_browser || 'chrome'
+    cookieManual.value = settings.cookie_manual || ''
+    cookieFile.value = settings.cookie_file || ''
     ElMessage.success('系统设置已成功保存并应用')
   } catch (error: any) {
     const errorDetail = error.response?.data?.detail || error.message || '保存设置失败'
@@ -99,11 +106,11 @@ onMounted(() => {
 <template>
   <div class="settings-view" v-loading="loading">
     <div class="header-section">
-      <h2>系统设置</h2>
-      <el-button type="primary" size="large" :loading="saving" @click="handleSaveSettings">
-        <el-icon><CircleCheck /></el-icon>
-        &nbsp;保存全部设置
-      </el-button>
+      <div>
+        <span class="eyebrow">Preferences</span>
+        <h2>设置与运行环境</h2>
+        <p>配置下载目录、并发数量、登录凭证和本机依赖。</p>
+      </div>
     </div>
 
     <!-- 1. 下载保存设置 -->
@@ -292,10 +299,14 @@ onMounted(() => {
       </div>
     </el-card>
 
-    <div class="bottom-action">
-      <el-button type="success" size="large" :loading="saving" @click="handleSaveSettings" style="width: 200px;">
-        <el-icon><Check /></el-icon>
-        &nbsp;保存系统配置
+    <div class="sticky-save-bar">
+      <div>
+        <strong>保存设置</strong>
+        <span>应用下载目录、并发数和 Cookie 凭证配置</span>
+      </div>
+      <el-button type="primary" size="large" :loading="saving" @click="handleSaveSettings">
+        <el-icon><CircleCheck /></el-icon>
+        保存全部设置
       </el-button>
     </div>
   </div>
@@ -303,44 +314,75 @@ onMounted(() => {
 
 <style scoped>
 .settings-view {
-  max-width: 900px;
   margin: 0 auto;
 }
 h2 {
-  font-size: 20px;
+  color: var(--text-main);
+  font-size: 28px;
   margin: 0;
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.header-section p {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 13px;
 }
 .header-section {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 24px;
+  gap: 16px;
 }
 .settings-card {
-  margin-bottom: 24px;
-  border-radius: 8px;
+  margin-bottom: 18px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+}
+
+.settings-card :deep(.el-card__header) {
+  padding: 16px 18px;
+  border-bottom-color: var(--border);
+}
+
+.settings-card :deep(.el-card__body) {
+  padding: 18px;
 }
 .card-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 .card-header .icon {
-  font-size: 18px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  font-size: 17px;
+  background: var(--surface-soft);
+  border-radius: 9px;
 }
 .card-header .icon.blue {
-  color: #409eff;
+  color: var(--brand);
 }
 .card-header .icon.orange {
-  color: #e6a23c;
+  color: var(--warning);
 }
 .card-header .icon.green {
-  color: #67c23a;
+  color: var(--success);
 }
 .card-header .title {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 14px;
-  color: #303133;
+  color: var(--text-main);
 }
 .card-body {
   display: flex;
@@ -355,8 +397,8 @@ h2 {
 }
 .item-label {
   font-size: 14px;
-  font-weight: 500;
-  color: #303133;
+  font-weight: 700;
+  color: var(--text-secondary);
 }
 .concurrency-control {
   display: flex;
@@ -373,7 +415,7 @@ h2 {
 }
 .settings-tip {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-muted);
   margin: 4px 0 0 0;
 }
 .cookie-settings {
@@ -384,14 +426,14 @@ h2 {
 }
 .cookie-detail-box {
   padding: 16px;
-  background-color: #f8f9fa;
-  border-radius: 6px;
-  border: 1px dashed #dcdfe6;
+  background-color: var(--surface-soft);
+  border-radius: 12px;
+  border: 1px dashed var(--border-strong);
 }
 .mode-desc p, .mode-form p {
   margin: 0 0 8px 0;
   font-size: 14px;
-  color: #303133;
+  color: var(--text-secondary);
 }
 .section-title {
   margin-bottom: 12px !important;
@@ -401,7 +443,7 @@ h2 {
 }
 .tip-text {
   font-size: 12px !important;
-  color: #82848a !important;
+  color: var(--text-muted) !important;
   line-height: 1.6;
   margin: 8px 0 0 0 !important;
 }
@@ -415,8 +457,8 @@ h2 {
 }
 .diag-label {
   font-size: 14px;
-  font-weight: 500;
-  color: #303133;
+  font-weight: 700;
+  color: var(--text-secondary);
 }
 .diag-status {
   display: flex;
@@ -430,22 +472,22 @@ h2 {
 }
 .diag-desc {
   font-size: 13px;
-  color: #5a5e66;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 .warning-text {
-  color: #e6a23c;
+  color: var(--warning);
   font-weight: 500;
 }
 .ffmpeg-guide {
   padding: 16px;
-  background-color: #fffaf0;
-  border: 1px solid #fdf6ec;
-  border-radius: 6px;
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
 }
 .guide-title {
   font-size: 13px;
-  color: #e6a23c;
+  color: var(--warning);
   margin: 0 0 12px 0;
 }
 .guide-content {
@@ -455,14 +497,14 @@ h2 {
 }
 .guide-platform {
   font-size: 13px;
-  color: #303133;
+  color: var(--text-main);
   margin: 0 0 8px 0;
 }
 .guide-content ol {
   margin: 0;
   padding-left: 18px;
   font-size: 12px;
-  color: #606266;
+  color: var(--text-secondary);
   line-height: 1.7;
 }
 .guide-content ol code {
@@ -479,10 +521,70 @@ h2 {
 .guide-content a:hover {
   text-decoration: underline;
 }
-.bottom-action {
+.sticky-save-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
   display: flex;
-  justify-content: center;
-  margin-top: 32px;
-  margin-bottom: 60px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 -8px 24px rgba(16, 24, 40, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.sticky-save-bar strong {
+  display: block;
+  color: var(--text-main);
+  font-size: 14px;
+}
+
+.sticky-save-bar span {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .header-section,
+  .input-row,
+  .concurrency-control,
+  .diag-status {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .header-section .el-button,
+  .input-row .el-button,
+  .sticky-save-bar .el-button {
+    width: 100%;
+  }
+
+  .sticky-save-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cookie-radio-group {
+    width: 100%;
+  }
+
+  .cookie-radio-group :deep(.el-radio-button) {
+    width: 50%;
+  }
+
+  .cookie-radio-group :deep(.el-radio-button__inner) {
+    width: 100%;
+  }
+
+  .guide-content {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
