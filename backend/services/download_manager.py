@@ -47,6 +47,7 @@ class DownloadTask:
         return TaskInfo(
             task_id=self.task_id,
             video_id=self.video_id,
+            format_id=self.item.format_id,
             title=self.title,
             status=self.status,
             progress=self.progress,
@@ -56,6 +57,9 @@ class DownloadTask:
             total_bytes=total,
             file_path=self.file_path,
             error=self.error,
+            url=self.item.url,
+            thumbnail=self.item.thumbnail,
+            webpage_url=self.item.webpage_url,
         )
 
     def cancel(self):
@@ -72,6 +76,7 @@ class DownloadManager:
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_DOWNLOADS)
         self._running = False
         self._worker_task: asyncio.Task | None = None
+        self._active_downloads: set[asyncio.Task] = set()
 
     def update_max_concurrent(self, limit: int):
         """动态更新最大并发下载数"""
@@ -91,18 +96,19 @@ class DownloadManager:
 
     async def _process_queue(self):
         while self._running:
-            try:
-                task = await asyncio.wait_for(self._queue.get(), timeout=1.0)
-            except asyncio.TimeoutError:
-                if self._queue.empty() and self._running:
-                    continue
-                else:
-                    break
+            task = await self._queue.get()
+            worker = asyncio.create_task(self._execute_with_limit(task))
+            self._active_downloads.add(worker)
+            worker.add_done_callback(self._active_downloads.discard)
+            self._queue.task_done()
 
-            async with self._semaphore:
-                if task._cancel_event.is_set():
-                    continue
-                await self._execute(task)
+    async def _execute_with_limit(self, task: DownloadTask):
+        if task._cancel_event.is_set():
+            return
+        async with self._semaphore:
+            if task._cancel_event.is_set():
+                return
+            await self._execute(task)
 
     async def _execute(self, task: DownloadTask):
         task.status = "downloading"
@@ -129,6 +135,7 @@ class DownloadManager:
         if len(ext) > 5:
             ext = "mp4"
         safe_title = _safe_filename(task.title)
+        os.makedirs(config.DOWNLOAD_DIR, exist_ok=True)
         file_path = os.path.join(config.DOWNLOAD_DIR, f"{safe_title}.{ext}")
         # 避免重名
         file_path = _unique_path(file_path)
@@ -136,6 +143,7 @@ class DownloadManager:
 
         async with httpx.AsyncClient(timeout=3600, headers=HEADERS, follow_redirects=True) as client:
             async with client.stream("GET", url) as resp:
+                resp.raise_for_status()
                 total = int(resp.headers.get("content-length", 0)) or None
                 task.total_bytes = total
 
@@ -144,7 +152,8 @@ class DownloadManager:
                     async for chunk in resp.aiter_bytes(chunk_size=1024 * 256):
                         if task._cancel_event.is_set():
                             f.close()
-                            os.remove(file_path)
+                            if os.path.exists(file_path):
+                                os.remove(file_path)
                             return
                         f.write(chunk)
                         downloaded += len(chunk)
@@ -156,6 +165,7 @@ class DownloadManager:
 
     async def _download_ytdlp(self, task: DownloadTask):
         safe_title = _safe_filename(task.title)
+        os.makedirs(config.DOWNLOAD_DIR, exist_ok=True)
         outtmpl = os.path.join(config.DOWNLOAD_DIR, f"{safe_title}.%(ext)s")
 
         def progress_hook(d: dict):
@@ -258,6 +268,12 @@ class DownloadManager:
         t = self._tasks.get(task_id)
         return t.to_info() if t else None
 
+    async def retry(self, task_id: str) -> TaskInfo | None:
+        t = self._tasks.get(task_id)
+        if not t or t.status not in ("failed", "cancelled"):
+            return None
+        return await self.add(t.item)
+
     def cancel(self, task_id: str) -> bool:
         t = self._tasks.get(task_id)
         if t and t.status in ("queued", "downloading"):
@@ -270,7 +286,7 @@ def _safe_filename(name: str) -> str:
     """清理文件名中的非法字符"""
     unsafe = r'[<>:"/\\|?*\x00-\x1f]'
     cleaned = __import__("re").sub(unsafe, "_", name)
-    return cleaned[:120].strip()
+    return cleaned[:120].strip() or "video"
 
 
 def _unique_path(path: str) -> str:

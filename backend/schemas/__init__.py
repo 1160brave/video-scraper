@@ -26,14 +26,14 @@ class VideoInfo(BaseModel):
     thumbnail: str | None = None
     duration: float | None = None
     webpage_url: str = ""
-    formats: list[VideoFormat] = []
+    formats: list[VideoFormat] = Field(default_factory=list)
 
 
 class ScrapeResponse(BaseModel):
     source_url: str
     platform: str = "generic"
     page_title: str | None = None
-    videos: list[VideoInfo] = []
+    videos: list[VideoInfo] = Field(default_factory=list)
     error: str | None = None
 
 
@@ -53,6 +53,7 @@ class DownloadRequest(BaseModel):
 class TaskInfo(BaseModel):
     task_id: str
     video_id: str
+    format_id: str = ""
     title: str
     status: str = "queued"
     progress: float = 0
@@ -62,3 +63,6 @@ class TaskInfo(BaseModel):
     total_bytes: int | None = None
     file_path: str | None = None
     error: str | None = None
+    url: str | None = None
+    thumbnail: str | None = None
+    webpage_url: str = ""

@@ -89,18 +89,13 @@ async def scrape_generic(url: str) -> tuple[list[VideoInfo], str | None]:
         if vi:
             videos.append(vi)
 
-    # 3. 从页面文本中查找视频 URL（正则匹配）
+    # 3. 从源码中查找视频 URL（包含 script 中的播放器配置）
     video_url_pattern = re.compile(
         r'https?://[^\s"\'<>]+\.(?:mp4|webm|mkv|mov|m3u8|mpd)(?:\?[^\s"\'<>]*)?',
         re.IGNORECASE,
     )
-    text = soup.get_text()
-    # 也搜 script 和 style 之外的内容
-    for script in soup.find_all(["script", "style"]):
-        script.decompose()
-    body_text = soup.get_text()
 
-    for match in video_url_pattern.finditer(body_text):
+    for match in video_url_pattern.finditer(html):
         vurl = match.group(0)
         if vurl in seen_urls:
             continue

@@ -6,6 +6,7 @@ import { computed } from 'vue'
 import UrlInput from '@/components/UrlInput.vue'
 import VideoCard from '@/components/VideoCard.vue'
 import type { DownloadItem } from '@/services/api'
+import { ElMessage } from 'element-plus'
 
 const store = useScraperStore()
 const downloadStore = useDownloadStore()
@@ -20,7 +21,7 @@ async function handleScrape(url: string) {
   await store.scrape(url)
 }
 
-function handleDownloadSelected() {
+async function handleDownloadSelected() {
   const items: DownloadItem[] = selectedVideos.value.map(v => {
     const fmt = v.formats.find(f => f.format_id === store.getSelectedFormat(v.id))
     return {
@@ -32,11 +33,16 @@ function handleDownloadSelected() {
       webpage_url: v.webpage_url,
     }
   })
-  downloadStore.addDownloads(items)
-  router.push('/downloads')
+  try {
+    await downloadStore.addDownloads(items)
+    router.push('/downloads')
+  } catch (error: any) {
+    const errorDetail = error.response?.data?.detail || error.message || '提交下载任务失败'
+    ElMessage.error(errorDetail)
+  }
 }
 
-function handleDownloadOne(videoId: string) {
+async function handleDownloadOne(videoId: string) {
   const v = store.result?.videos.find(x => x.id === videoId)
   if (!v) return
   const fmt = v.formats.find(f => f.format_id === store.getSelectedFormat(v.id))
@@ -48,8 +54,13 @@ function handleDownloadOne(videoId: string) {
     thumbnail: v.thumbnail,
     webpage_url: v.webpage_url,
   }]
-  downloadStore.addDownloads(items)
-  router.push('/downloads')
+  try {
+    await downloadStore.addDownloads(items)
+    router.push('/downloads')
+  } catch (error: any) {
+    const errorDetail = error.response?.data?.detail || error.message || '提交下载任务失败'
+    ElMessage.error(errorDetail)
+  }
 }
 </script>
 
@@ -88,6 +99,7 @@ function handleDownloadOne(videoId: string) {
         <el-button
           type="primary"
           :disabled="selectedVideos.length === 0"
+          :loading="downloadStore.submitting"
           @click="handleDownloadSelected"
         >
           下载选中 ({{ selectedVideos.length }})

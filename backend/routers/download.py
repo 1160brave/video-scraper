@@ -49,6 +49,15 @@ async def cancel_task(task_id: str):
     raise HTTPException(status_code=404, detail="任务不存在或已完成")
 
 
+@router.post("/api/tasks/{task_id}/retry")
+async def retry_task(task_id: str) -> TaskInfo:
+    """按原始参数重试失败或已取消的任务"""
+    task = await manager.retry(task_id)
+    if task:
+        return task
+    raise HTTPException(status_code=404, detail="任务不存在，或当前状态不可重试")
+
+
 @router.post("/api/tasks/{task_id}/open-folder")
 async def open_task_folder(task_id: str):
     """在文件资源管理器中定位并选中文件"""
@@ -226,4 +235,3 @@ async def update_settings(payload: dict):
         "max_concurrent": config.MAX_CONCURRENT_DOWNLOADS,
         "ffmpeg_installed": config.check_ffmpeg(),
     }
-

@@ -2,6 +2,8 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useDownloadStore } from '@/stores/download'
 import DownloadItem from '@/components/DownloadItem.vue'
+import type { TaskInfo } from '@/services/api'
+import { ElMessage } from 'element-plus'
 
 const store = useDownloadStore()
 
@@ -13,6 +15,15 @@ onMounted(() => {
 onUnmounted(() => {
   store.disconnectSSE()
 })
+
+async function handleRetry(task: TaskInfo) {
+  try {
+    await store.retryTask(task)
+  } catch (error: any) {
+    const errorDetail = error.response?.data?.detail || error.message || '重试任务失败'
+    ElMessage.error(errorDetail)
+  }
+}
 </script>
 
 <template>
@@ -54,14 +65,14 @@ onUnmounted(() => {
 
       <!-- 失败 -->
       <section v-if="store.failedTasks.length > 0" class="section">
-        <h3>失败 ({{ store.failedTasks.length }})</h3>
+        <h3>失败/已取消 ({{ store.failedTasks.length }})</h3>
         <div class="task-list">
           <DownloadItem
             v-for="task in store.failedTasks"
             :key="task.task_id"
             :task="task"
             @cancel="() => {}"
-            @retry="store.retryTask(task)"
+            @retry="handleRetry(task)"
           />
         </div>
       </section>

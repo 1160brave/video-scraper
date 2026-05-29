@@ -58,6 +58,7 @@ export interface DownloadRequest {
 export interface TaskInfo {
   task_id: string
   video_id: string
+  format_id: string
   title: string
   status: 'queued' | 'downloading' | 'completed' | 'failed' | 'cancelled'
   progress: number
@@ -67,6 +68,9 @@ export interface TaskInfo {
   total_bytes: number | null
   file_path: string | null
   error: string | null
+  url: string | null
+  thumbnail: string | null
+  webpage_url: string
 }
 
 // ---- API 方法 ----
@@ -88,6 +92,11 @@ export async function getTasks(): Promise<TaskInfo[]> {
 
 export async function cancelTask(taskId: string): Promise<void> {
   await api.delete(`/api/tasks/${taskId}`)
+}
+
+export async function retryTask(taskId: string): Promise<TaskInfo> {
+  const { data } = await api.post<TaskInfo>(`/api/tasks/${taskId}/retry`)
+  return data
 }
 
 export async function openFolder(taskId: string): Promise<void> {
@@ -131,4 +140,3 @@ export async function saveSettings(payload: Partial<SettingsInfo>): Promise<Sett
 }
 
 export { BASE_URL }
-
