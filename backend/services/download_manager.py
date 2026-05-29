@@ -5,6 +5,7 @@ import os
 import uuid
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 import yt_dlp
@@ -141,7 +142,8 @@ class DownloadManager:
         file_path = _unique_path(file_path)
         task.file_path = file_path
 
-        async with httpx.AsyncClient(timeout=3600, headers=HEADERS, follow_redirects=True) as client:
+        headers = _download_headers(url, task.item.webpage_url)
+        async with httpx.AsyncClient(timeout=3600, headers=headers, follow_redirects=True) as client:
             async with client.stream("GET", url) as resp:
                 resp.raise_for_status()
                 total = int(resp.headers.get("content-length", 0)) or None
@@ -308,6 +310,18 @@ def _format_error(error: Exception) -> str:
         return f"下载失败：网络请求异常（{error.__class__.__name__}）"
     message = str(error).strip()
     return message or error.__class__.__name__
+
+
+def _download_headers(url: str, webpage_url: str | None) -> dict[str, str]:
+    headers = dict(HEADERS)
+    if webpage_url:
+        source = urlparse(webpage_url)
+        target = urlparse(url)
+        if source.scheme and source.netloc and webpage_url != url:
+            headers["Referer"] = webpage_url
+        if target.netloc.endswith("qpic.cn") and source.netloc:
+            headers["Origin"] = f"{source.scheme}://{source.netloc}"
+    return headers
 
 
 # 全局单例
