@@ -4,6 +4,7 @@ import yt_dlp
 from yt_dlp.utils import DownloadError, UnsupportedError
 
 from schemas import VideoInfo, VideoFormat
+from services.generic_scraper import HEADERS
 
 
 def extract_formats(info: dict) -> list[VideoFormat]:
@@ -124,22 +125,25 @@ def scrape_with_ytdlp(url: str) -> tuple[list[VideoInfo], str | None]:
         "extract_flat": False,
         "skip_download": True,
         "youtube_include_dash_manifest": False,
+        "http_headers": _build_http_headers(url),
     }
     
     # 动态融入 Cookie 设定
-    opts.update(config.get_ytdlp_cookie_options())
+    cookie_opts = config.get_ytdlp_cookie_options()
+    if "http_headers" in cookie_opts:
+        opts["http_headers"] = {**opts["http_headers"], **cookie_opts.pop("http_headers")}
+    opts.update(cookie_opts)
 
     info, error = _extract_info(url, opts)
     if info is None and error and _is_cookie_error(error):
         retry_opts = dict(opts)
         retry_opts.pop("cookiesfrombrowser", None)
         retry_opts.pop("cookiefile", None)
-        retry_opts.pop("http_headers", None)
         info, retry_error = _extract_info(url, retry_opts)
         if info is None:
-            return [], f"{error}；已尝试不使用 Cookie 重新解析，仍然失败：{retry_error}"
+            return [], f"{_format_extract_error(error)}；已尝试不使用 Cookie 重新解析，仍然失败：{_format_extract_error(retry_error)}"
     elif info is None:
-        return [], error
+        return [], _format_extract_error(error)
 
     if info is None:
         return [], "无法获取页面信息"
@@ -174,6 +178,33 @@ def _extract_info(url: str, opts: dict) -> tuple[dict | None, str | None]:
             return None, str(e)
         except Exception as e:
             return None, f"yt-dlp 解析失败: {e}"
+
+
+def _build_http_headers(url: str) -> dict[str, str]:
+    headers = dict(HEADERS)
+    if "bilibili.com" in url:
+        headers.update({
+            "Referer": "https://www.bilibili.com/",
+            "Origin": "https://www.bilibili.com",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        })
+    return headers
+
+
+def _format_extract_error(error: str | None) -> str | None:
+    if not error:
+        return error
+
+    lowered = error.lower()
+    if "http error 412" in lowered or "precondition failed" in lowered:
+        return (
+            "B站返回 HTTP 412：当前网络/IP 或 Cookie 被风控，解析请求被拒绝。"
+            "请在设置里启用已登录浏览器 Cookie（推荐 Chrome/Safari），或导入 cookies.txt；"
+            "如果刚切换网络，也可以换回原网络、关闭代理/VPN 后重试。"
+        )
+    if "http error 403" in lowered or "forbidden" in lowered:
+        return "服务器返回 HTTP 403：当前请求缺少权限或被拦截，请检查 Cookie、登录状态、网络或代理。"
+    return error
 
 
 def _is_cookie_error(error: str) -> bool:
