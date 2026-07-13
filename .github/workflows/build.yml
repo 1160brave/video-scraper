@@ -37,6 +37,10 @@ jobs:
           pyinstaller --onedir --windowed --name="视频爬取工具" `
             --add-data "backend;backend" `
             --add-data "dist;dist" `
+            --collect-submodules fastapi `
+            --collect-submodules starlette `
+            --collect-submodules uvicorn `
+            --collect-submodules sse_starlette `
             --hidden-import yt_dlp `
             --hidden-import yt_dlp.extractor `
             --hidden-import yt_dlp.downloader `
@@ -44,8 +48,21 @@ jobs:
             --hidden-import bs4 `
             --hidden-import lxml `
             --hidden-import sse_starlette `
+            --hidden-import sse_starlette.sse `
             --hidden-import fastapi `
+            --hidden-import fastapi.middleware `
+            --hidden-import fastapi.middleware.cors `
+            --hidden-import fastapi.staticfiles `
+            --hidden-import fastapi.responses `
+            --hidden-import starlette.middleware `
+            --hidden-import starlette.middleware.cors `
+            --hidden-import starlette.staticfiles `
+            --hidden-import starlette.responses `
             --hidden-import webview `
+            --hidden-import clr `
+            --hidden-import win32gui `
+            --hidden-import win32con `
+            --hidden-import win32api `
             --exclude-module tkinter `
             run.py
 
@@ -86,6 +103,10 @@ jobs:
           pyinstaller --onedir --windowed --name="视频爬取工具" \
             --add-data "backend:backend" \
             --add-data "dist:dist" \
+            --collect-submodules fastapi \
+            --collect-submodules starlette \
+            --collect-submodules uvicorn \
+            --collect-submodules sse_starlette \
             --hidden-import yt_dlp \
             --hidden-import yt_dlp.extractor \
             --hidden-import yt_dlp.downloader \
@@ -93,7 +114,16 @@ jobs:
             --hidden-import bs4 \
             --hidden-import lxml \
             --hidden-import sse_starlette \
+            --hidden-import sse_starlette.sse \
             --hidden-import fastapi \
+            --hidden-import fastapi.middleware \
+            --hidden-import fastapi.middleware.cors \
+            --hidden-import fastapi.staticfiles \
+            --hidden-import fastapi.responses \
+            --hidden-import starlette.middleware \
+            --hidden-import starlette.middleware.cors \
+            --hidden-import starlette.staticfiles \
+            --hidden-import starlette.responses \
             --hidden-import webview \
             --exclude-module tkinter \
             run.py

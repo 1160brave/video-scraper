@@ -1,43 +1,50 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from PyInstaller.utils.hooks import collect_submodules
+
+hiddenimports = [
+    'uvicorn.loops.auto',
+    'uvicorn.loops.select',
+    'uvicorn.protocols.http.auto',
+    'uvicorn.protocols.http.h11_impl',
+    'uvicorn.lifespan.on',
+    'uvicorn.logging',
+    'yt_dlp',
+    'yt_dlp.extractor',
+    'yt_dlp.downloader',
+    'httpx',
+    'bs4',
+    'lxml',
+    'fastapi',
+    'fastapi.middleware',
+    'fastapi.middleware.cors',
+    'fastapi.staticfiles',
+    'fastapi.responses',
+    'starlette',
+    'starlette.middleware',
+    'starlette.middleware.cors',
+    'starlette.staticfiles',
+    'starlette.responses',
+    'sse_starlette',
+    'sse_starlette.sse',
+    'aiofiles',
+    'webview',
+    'clr',       # pywebview Windows .NET 依赖 (WebView2 核心)
+    'win32gui',  # pywebview Windows Win32 依赖
+    'win32con',
+    'win32api',
+]
+hiddenimports += collect_submodules('fastapi')
+hiddenimports += collect_submodules('starlette')
+hiddenimports += collect_submodules('uvicorn')
+hiddenimports += collect_submodules('sse_starlette')
 
 a = Analysis(
     ['run.py'],
     pathex=[],
     binaries=[],
     datas=[('backend', 'backend'), ('dist', 'dist')],
-    hiddenimports=[
-        'uvicorn.loops.auto',
-        'uvicorn.loops.select',
-        'uvicorn.protocols.http.auto',
-        'uvicorn.protocols.http.h11_impl',
-        'uvicorn.lifespan.on',
-        'uvicorn.logging',
-        'yt_dlp',
-        'yt_dlp.extractor',
-        'yt_dlp.downloader',
-        'httpx',
-        'bs4',
-        'lxml',
-        'fastapi',
-        'fastapi.middleware',
-        'fastapi.middleware.cors',
-        'fastapi.staticfiles',
-        'fastapi.responses',
-        'starlette',
-        'starlette.middleware',
-        'starlette.middleware.cors',
-        'starlette.staticfiles',
-        'starlette.responses',
-        'sse_starlette',
-        'sse_starlette.sse',
-        'aiofiles',
-        'webview',
-        'clr',       # pywebview Windows .NET 依赖 (WebView2 核心)
-        'win32gui',  # pywebview Windows Win32 依赖
-        'win32con',
-        'win32api',
-    ],
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

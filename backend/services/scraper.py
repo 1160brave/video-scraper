@@ -41,13 +41,16 @@ async def scrape_url(url: str) -> ScrapeResponse:
 
     # 2. yt-dlp 失败，回退到通用爬取
     gen_videos, gen_error = await scrape_generic(url)
+    error = gen_error if not gen_videos else None
+    if not gen_videos and yt_error:
+        error = f"{yt_error}；通用网页解析也未找到视频"
 
     return ScrapeResponse(
         source_url=url,
         platform="generic",
         page_title=None,
         videos=gen_videos,
-        error=gen_error if not gen_videos else None,
+        error=error,
     )
 
 

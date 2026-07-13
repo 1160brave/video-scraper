@@ -129,15 +129,17 @@ def scrape_with_ytdlp(url: str) -> tuple[list[VideoInfo], str | None]:
     # 动态融入 Cookie 设定
     opts.update(config.get_ytdlp_cookie_options())
 
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        try:
-            info = ydl.extract_info(url, download=False)
-        except UnsupportedError:
-            return [], None
-        except DownloadError as e:
-            return [], str(e)
-        except Exception as e:
-            return [], f"yt-dlp 解析失败: {e}"
+    info, error = _extract_info(url, opts)
+    if info is None and error and _is_cookie_error(error):
+        retry_opts = dict(opts)
+        retry_opts.pop("cookiesfrombrowser", None)
+        retry_opts.pop("cookiefile", None)
+        retry_opts.pop("http_headers", None)
+        info, retry_error = _extract_info(url, retry_opts)
+        if info is None:
+            return [], f"{error}；已尝试不使用 Cookie 重新解析，仍然失败：{retry_error}"
+    elif info is None:
+        return [], error
 
     if info is None:
         return [], "无法获取页面信息"
@@ -160,6 +162,23 @@ def scrape_with_ytdlp(url: str) -> tuple[list[VideoInfo], str | None]:
     if vi:
         return [vi], None
     return [], "未能解析出视频信息"
+
+
+def _extract_info(url: str, opts: dict) -> tuple[dict | None, str | None]:
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        try:
+            return ydl.extract_info(url, download=False), None
+        except UnsupportedError:
+            return None, None
+        except DownloadError as e:
+            return None, str(e)
+        except Exception as e:
+            return None, f"yt-dlp 解析失败: {e}"
+
+
+def _is_cookie_error(error: str) -> bool:
+    lowered = error.lower()
+    return "cookies database" in lowered or "could not find" in lowered and "cookies" in lowered
 
 
 def _build_video_info(info: dict, index: int) -> VideoInfo | None:

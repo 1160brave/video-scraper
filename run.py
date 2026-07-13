@@ -118,9 +118,16 @@ sys.path.insert(0, os.path.join(BASE_DIR, "backend"))
 try:
     import config
     from config import BACKEND_PORT
+    import fastapi.middleware.cors
+    import fastapi.responses
+    import fastapi.staticfiles
+    import starlette.middleware.cors
+    import starlette.responses
+    import starlette.staticfiles
+    import sse_starlette.sse
 except Exception as e:
     # 显式捕获导入 backend config 的错误
-    raise RuntimeError(f"加载 backend.config 失败，请检查 backend 文件夹是否存在且包含 config.py。\n详细错误: {e}")
+    raise RuntimeError(f"加载后端依赖失败，请检查 backend 文件夹和 Python 依赖是否完整。\n详细错误: {e}")
 
 API_URL = f"http://127.0.0.1:{BACKEND_PORT}"
 
@@ -255,4 +262,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
