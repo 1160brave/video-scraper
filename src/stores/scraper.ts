@@ -1,7 +1,7 @@
 // 爬取状态管理
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
-import { scrapeUrl, type ScrapeResponse, type VideoFormat } from '@/services/api'
+import { getSettings, scrapeUrl, type ScrapeResponse, type VideoFormat } from '@/services/api'
 
 export const useScraperStore = defineStore('scraper', () => {
   const url = ref('')
@@ -10,6 +10,7 @@ export const useScraperStore = defineStore('scraper', () => {
   const error = ref<string | null>(null)
   const selectedFormats = reactive<Record<string, string>>({})
   const selectedVideos = reactive<Record<string, boolean>>({})
+  const ffmpegInstalled = ref(true)
   let scrapeRequestId = 0
 
   async function scrape(inputUrl: string) {
@@ -23,6 +24,13 @@ export const useScraperStore = defineStore('scraper', () => {
     Object.keys(selectedVideos).forEach(k => delete selectedVideos[k])
 
     try {
+      try {
+        const settings = await getSettings()
+        ffmpegInstalled.value = settings.ffmpeg_installed
+      } catch {
+        ffmpegInstalled.value = true
+      }
+
       const data = await scrapeUrl(url.value)
       if (requestId !== scrapeRequestId) return
 
@@ -37,7 +45,7 @@ export const useScraperStore = defineStore('scraper', () => {
         status.value = 'success'
         // auto-select best format for each video
         for (const video of data.videos) {
-          const best = [...video.formats].sort((a, b) => formatScore(b) - formatScore(a))[0]
+          const best = [...video.formats].sort((a, b) => formatScore(b, ffmpegInstalled.value) - formatScore(a, ffmpegInstalled.value))[0]
           if (best) {
             selectedFormats[video.id] = best.format_id
             selectedVideos[video.id] = true
@@ -95,6 +103,7 @@ export const useScraperStore = defineStore('scraper', () => {
     status,
     result,
     error,
+    ffmpegInstalled,
     selectedFormats,
     selectedVideos,
     scrape,
@@ -108,11 +117,12 @@ export const useScraperStore = defineStore('scraper', () => {
   }
 })
 
-function formatScore(format: VideoFormat): number {
+function formatScore(format: VideoFormat, canMerge: boolean): number {
   const resolution = format.resolution || format.format_note || ''
   const height = Number(resolution.match(/(\d{3,4})p?/)?.[1] || 0)
   const extensionBonus = format.ext === 'mp4' ? 100 : 0
   const avBonus = format.has_audio && format.has_video ? 1000 : 0
   const directBonus = format.is_direct_url ? 20 : 0
-  return avBonus + height + extensionBonus + directBonus
+  const mergePenalty = !canMerge && format.format_id.includes('+') ? -10_000 : 0
+  return avBonus + height + extensionBonus + directBonus + mergePenalty
 }

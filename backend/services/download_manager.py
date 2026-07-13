@@ -166,6 +166,9 @@ class DownloadManager:
         task.progress = 100
 
     async def _download_ytdlp(self, task: DownloadTask):
+        if _requires_ffmpeg_merge(task.item.format_id) and not config.check_ffmpeg():
+            raise RuntimeError("当前选择的格式需要 FFmpeg 合并音视频，请先在设置页安装 FFmpeg，或选择仅视频/单文件格式")
+
         safe_title = _safe_filename(task.title)
         os.makedirs(config.DOWNLOAD_DIR, exist_ok=True)
         outtmpl = os.path.join(config.DOWNLOAD_DIR, f"{safe_title}.%(ext)s")
@@ -201,10 +204,21 @@ class DownloadManager:
             "progress_hooks": [progress_hook],
             "format": task.item.format_id,
             "paths": {"home": config.DOWNLOAD_DIR},
+            "continuedl": True,
+            "retries": 10,
+            "fragment_retries": 10,
+            "file_access_retries": 5,
+            "extractor_retries": 3,
+            "socket_timeout": 30,
+            "nocheckcertificate": True,
+            "http_headers": HEADERS,
         }
 
-        # 动态融入 Cookie 设定
-        opts.update(config.get_ytdlp_cookie_options())
+        # 动态融入 Cookie 设定；手动 Cookie 只合并 Header，不覆盖 User-Agent。
+        cookie_opts = config.get_ytdlp_cookie_options()
+        if "http_headers" in cookie_opts:
+            opts["http_headers"] = {**opts["http_headers"], **cookie_opts.pop("http_headers")}
+        opts.update(cookie_opts)
 
         loop = asyncio.get_event_loop()
         try:
@@ -304,11 +318,13 @@ def _unique_path(path: str) -> str:
 
 def _format_error(error: Exception) -> str:
     """将底层异常转成面向用户的短错误信息"""
+    message = str(error).strip()
+    if "UNEXPECTED_EOF_WHILE_READING" in message or "EOF occurred in violation of protocol" in message:
+        return "下载失败：SSL 连接被服务器中途断开，请重试，程序会尝试断点续传"
     if isinstance(error, httpx.HTTPStatusError):
         return f"下载失败：服务器返回 HTTP {error.response.status_code}"
     if isinstance(error, httpx.RequestError):
         return f"下载失败：网络请求异常（{error.__class__.__name__}）"
-    message = str(error).strip()
     return message or error.__class__.__name__
 
 
@@ -322,6 +338,10 @@ def _download_headers(url: str, webpage_url: str | None) -> dict[str, str]:
         if target.netloc.endswith("qpic.cn") and source.netloc:
             headers["Origin"] = f"{source.scheme}://{source.netloc}"
     return headers
+
+
+def _requires_ffmpeg_merge(format_id: str) -> bool:
+    return "+" in format_id
 
 
 # 全局单例

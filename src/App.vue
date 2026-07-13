@@ -35,13 +35,10 @@ const activeCount = computed(() => downloadStore.activeTasks.length)
         </el-menu-item>
         <el-menu-item index="/downloads">
           <el-icon><Download /></el-icon>
-          <span>下载管理</span>
-          <el-badge
-            v-if="activeCount > 0"
-            :value="activeCount"
-            :max="99"
-            class="menu-badge"
-          />
+          <span class="menu-text">
+            下载管理
+            <span v-if="activeCount > 0" class="menu-count">{{ activeCount > 99 ? '99+' : activeCount }}</span>
+          </span>
         </el-menu-item>
         <el-menu-item index="/settings">
           <el-icon><Tools /></el-icon>
@@ -136,9 +133,28 @@ const activeCount = computed(() => downloadStore.activeTasks.length)
   box-shadow: inset 3px 0 0 #60a5fa;
 }
 
-.menu-badge {
-  margin-left: auto;
-  margin-right: 4px;
+.menu-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.menu-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  background: #ef4444;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  box-shadow: none;
 }
 
 .sidebar-foot {
