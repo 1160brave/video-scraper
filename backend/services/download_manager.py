@@ -230,7 +230,11 @@ class DownloadManager:
                 if task.file_path and os.path.exists(task.file_path):
                     os.remove(task.file_path)
                 return
-            raise
+            if _is_cookie_error(e):
+                retry_opts = _without_cookie_options(opts)
+                await loop.run_in_executor(None, lambda: self._run_ytdlp(retry_opts, task))
+            else:
+                raise
 
         # 查找下载的文件
         if not task.file_path or not os.path.exists(task.file_path):
@@ -319,6 +323,11 @@ def _unique_path(path: str) -> str:
 def _format_error(error: Exception) -> str:
     """将底层异常转成面向用户的短错误信息"""
     message = str(error).strip()
+    if _is_cookie_error(error):
+        return (
+            "下载失败：当前设置选择的浏览器 Cookie 不可用。"
+            "请在下载设置里改用已登录的 Chrome/Safari，导入 cookies.txt，或关闭 Cookie 后重试。"
+        )
     if "UNEXPECTED_EOF_WHILE_READING" in message or "EOF occurred in violation of protocol" in message:
         return "下载失败：SSL 连接被服务器中途断开，请重试，程序会尝试断点续传"
     if isinstance(error, httpx.HTTPStatusError):
@@ -338,6 +347,25 @@ def _download_headers(url: str, webpage_url: str | None) -> dict[str, str]:
         if target.netloc.endswith("qpic.cn") and source.netloc:
             headers["Origin"] = f"{source.scheme}://{source.netloc}"
     return headers
+
+
+def _is_cookie_error(error: Exception) -> bool:
+    message = str(error).lower()
+    return (
+        "cookies database" in message
+        or ("could not find" in message and "cookies" in message)
+        or ("cookie" in message and "not found" in message)
+    )
+
+
+def _without_cookie_options(opts: dict) -> dict:
+    retry_opts = dict(opts)
+    retry_opts.pop("cookiesfrombrowser", None)
+    retry_opts.pop("cookiefile", None)
+    headers = dict(retry_opts.get("http_headers") or {})
+    headers.pop("Cookie", None)
+    retry_opts["http_headers"] = headers
+    return retry_opts
 
 
 def _requires_ffmpeg_merge(format_id: str) -> bool:
